@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'logic/moto_provider.dart';
 import 'logic/settings_provider.dart';
-import 'ui/screens/home_screen.dart';
+import 'ui/screens/splash_screen.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
@@ -28,7 +28,7 @@ class MyApp extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       title: 'Moto Catalog',
       theme: settings.isDarkMode ? ThemeData.dark() : ThemeData.light(),
-      home: const HomeScreen(), 
+      home: const SplashScreen(), 
     );
   }
 }

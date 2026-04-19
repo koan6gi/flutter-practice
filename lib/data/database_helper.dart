@@ -25,12 +25,21 @@ class DatabaseHelper {
     await db.execute('''
       CREATE TABLE motorcycles (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
-        brand TEXT,
+        make TEXT,
         model TEXT,
-        year TEXT,
-        description TEXT
+        year INTEGER,
+        type TEXT,
+        engine TEXT,
+        power TEXT,
+        transmission TEXT,
+        weight TEXT
       )
     ''');
+  }
+
+  Future<void> clearAll() async {
+    final db = await instance.database;
+    await db.delete('motorcycles');
   }
 
   Future<int> create(Motorcycle moto) async {
@@ -42,16 +51,6 @@ class DatabaseHelper {
     final db = await instance.database;
     final result = await db.query('motorcycles');
     return result.map((json) => Motorcycle.fromMap(json)).toList();
-  }
-
-  Future<int> update(Motorcycle moto) async {
-    final db = await instance.database;
-    return await db.update(
-      'motorcycles',
-      moto.toMap(),
-      where: 'id = ?',
-      whereArgs: [moto.id],
-    );
   }
 
   Future<int> delete(int id) async {

@@ -46,3 +46,9 @@ app.*.map.json
 
 # Docs
 labs-docs/
+
+# Env
+.env
+
+# AI
+.codex

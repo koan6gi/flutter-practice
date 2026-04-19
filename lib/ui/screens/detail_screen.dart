@@ -33,7 +33,7 @@ class DetailScreen extends StatelessWidget {
               showDialog(
                 context: context,
                 builder: (ctx) => AlertDialog(
-                  title: Text(settings.translate('delete') + '?'),
+                  title: Text('${settings.translate('delete')}?'),
                   content: const Text('Are you sure?'),
                   actions: [
                     TextButton(

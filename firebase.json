@@ -1,0 +1,1 @@
+{"flutter":{"platforms":{"android":{"default":{"projectId":"moto-garage-lab","appId":"1:500180845592:android:cb08881eb8c378b0ad6f6d","fileOutput":"android/app/google-services.json"}},"dart":{"lib/firebase_options.dart":{"projectId":"moto-garage-lab","configurations":{"android":"1:500180845592:android:cb08881eb8c378b0ad6f6d","ios":"1:500180845592:ios:fef6576fcecd28bead6f6d"}}}}}}

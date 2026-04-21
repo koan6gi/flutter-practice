@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "500180845592",
+    "project_id": "moto-garage-lab",
+    "storage_bucket": "moto-garage-lab.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:500180845592:android:cb08881eb8c378b0ad6f6d",
+        "android_client_info": {
+          "package_name": "com.example.moto_catalog"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBTkGdbSf8hnVbWKCEjVUIR1FD6zg8Pteg"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

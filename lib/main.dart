@@ -5,7 +5,8 @@ import 'package:firebase_core/firebase_core.dart';
 import 'firebase_options.dart';
 import 'logic/moto_provider.dart';
 import 'logic/settings_provider.dart';
-import 'ui/screens/splash_screen.dart';
+import 'ui/screens/home_screen.dart';
+import 'ui/screens/auth_screen.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -32,12 +33,18 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final settings = Provider.of<SettingsProvider>(context);
-    
+
     return MaterialApp(
-      debugShowCheckedModeBanner: false,
-      title: 'Moto Catalog',
-      theme: settings.isDarkMode ? ThemeData.dark() : ThemeData.light(),
-      home: const SplashScreen(), 
+      title: 'Moto Garage',
+      theme: ThemeData(
+        brightness: settings.isDarkMode ? Brightness.dark : Brightness.light,
+        primarySwatch: Colors.blue,
+      ),
+      home: Consumer<MotoProvider>(
+        builder: (context, auth, _) {
+          return auth.isAuthenticated ? const HomeScreen() : const AuthScreen();
+        },
+      ),
     );
   }
 }

@@ -1,9 +1,11 @@
+import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:fuzzy/fuzzy.dart';
@@ -22,10 +24,19 @@ class MotoProvider with ChangeNotifier {
   bool _sortAscending = false;
 
   final FirebaseFirestore _db = FirebaseFirestore.instance;
+  final FirebaseAuth _auth = FirebaseAuth.instance;
   final FlutterLocalNotificationsPlugin _notificationsPlugin = FlutterLocalNotificationsPlugin();
+  
+  StreamSubscription? _subscription;
+  User? _user;
 
   MotoProvider() {
     _initNotifications();
+    _auth.authStateChanges().listen((User? user) {
+      _user = user;
+      _setupRealtimeListener();
+      notifyListeners();
+    });
   }
 
   Future<void> _initNotifications() async {
@@ -40,6 +51,9 @@ class MotoProvider with ChangeNotifier {
 
     _notificationsPlugin.resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>()?.requestNotificationsPermission();
   }
+
+  User? get user => _user;
+  bool get isAuthenticated => _user != null;
 
   List<Motorcycle> get collection => _collection;
   List<Motorcycle> get searchResults => _searchResults;
@@ -88,6 +102,48 @@ class MotoProvider with ChangeNotifier {
     return result;
   }
 
+  void _setupRealtimeListener() {
+    _subscription?.cancel();
+    if (_user == null) {
+      _collection = [];
+      notifyListeners();
+      return;
+    }
+
+    _subscription = _db
+        .collection('garage')
+        .where('ownerId', isEqualTo: _user!.uid)
+        .snapshots()
+        .listen((snapshot) {
+      _collection = snapshot.docs.map((doc) {
+        return Motorcycle.fromMap(doc.data(), docId: doc.id);
+      }).toList();
+      notifyListeners();
+    });
+  }
+
+  Future<void> authAction(String email, String password, bool isLogin) async {
+    _isLoading = true;
+    notifyListeners();
+    try {
+      if (isLogin) {
+        await _auth.signInWithEmailAndPassword(email: email, password: password);
+      } else {
+        await _auth.createUserWithEmailAndPassword(email: email, password: password);
+      }
+    } catch (e) {
+      debugPrint('Auth Error: $e');
+      rethrow;
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
+
+  void signOut() {
+    _auth.signOut();
+  }
+
   void setGarageSearchQuery(String query) {
     _searchQuery = query;
     notifyListeners();
@@ -101,18 +157,6 @@ class MotoProvider with ChangeNotifier {
   void toggleSort() {
     _sortAscending = !_sortAscending;
     notifyListeners();
-  }
-
-  Future<void> loadCollection() async {
-    try {
-      final snapshot = await _db.collection('garage').get();
-      _collection = snapshot.docs.map((doc) {
-        return Motorcycle.fromMap(doc.data(), docId: doc.id);
-      }).toList();
-      notifyListeners();
-    } catch (e) {
-      debugPrint('Error Firebase load: $e');
-    }
   }
 
   Future<String?> searchMotorcycles(String query) async {
@@ -177,8 +221,10 @@ class MotoProvider with ChangeNotifier {
   }
 
   Future<void> addToCollection(Motorcycle moto) async {
-    await _db.collection('garage').add(moto.toMap());
-    await loadCollection();
+    if (_user == null) return;
+    final data = moto.toMap();
+    data['ownerId'] = _user!.uid;
+    await _db.collection('garage').add(data);
   }
 
   Future<void> removeFromCollection(Motorcycle moto) async {
@@ -187,7 +233,6 @@ class MotoProvider with ChangeNotifier {
     }
     if (moto.id != null) {
       await _db.collection('garage').doc(moto.id).delete();
-      await loadCollection();
     }
   }
 
@@ -212,9 +257,9 @@ class MotoProvider with ChangeNotifier {
     }
   }
 
-  Future<void> attachPhoto(Motorcycle moto) async {
+  Future<void> attachPhoto(Motorcycle moto, ImageSource source) async {
     final picker = ImagePicker();
-    final XFile? image = await picker.pickImage(source: ImageSource.gallery);
+    final XFile? image = await picker.pickImage(source: source);
     
     if (image == null || moto.id == null) return;
 
@@ -251,8 +296,6 @@ class MotoProvider with ChangeNotifier {
         if (oldFileId != null) {
           await _deletePhotoFromImageKit(oldFileId);
         }
-
-        await loadCollection(); 
       } else {
         debugPrint('Error ImageKit upload: ${response.statusCode}');
       }
@@ -281,5 +324,11 @@ class MotoProvider with ChangeNotifier {
       notificationDetails: notificationDetails,
       androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
     );
+  }
+
+  @override
+  void dispose() {
+    _subscription?.cancel();
+    super.dispose();
   }
 }

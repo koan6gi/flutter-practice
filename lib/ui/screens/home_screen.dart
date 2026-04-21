@@ -6,21 +6,8 @@ import 'settings_screen.dart';
 import 'detail_screen.dart';
 import 'search_screen.dart';
 
-class HomeScreen extends StatefulWidget {
+class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
-
-  @override
-  State<HomeScreen> createState() => _HomeScreenState();
-}
-
-class _HomeScreenState extends State<HomeScreen> {
-  @override
-  void initState() {
-    super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      Provider.of<MotoProvider>(context, listen: false).loadCollection();
-    });
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -30,6 +17,12 @@ class _HomeScreenState extends State<HomeScreen> {
       appBar: AppBar(
         title: Text(settings.translate('title')),
         actions: [
+          IconButton(
+            icon: const Icon(Icons.logout),
+            onPressed: () {
+              Provider.of<MotoProvider>(context, listen: false).signOut();
+            },
+          ),
           IconButton(
             icon: const Icon(Icons.settings),
             onPressed: () {

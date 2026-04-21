@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:share_plus/share_plus.dart';
+import 'package:image_picker/image_picker.dart';
 import '../../data/models/motorcycle.dart';
 import '../../logic/moto_provider.dart';
 import '../../logic/settings_provider.dart';
@@ -9,6 +11,36 @@ class DetailScreen extends StatelessWidget {
   final bool isFromSearch;
 
   const DetailScreen({super.key, required this.moto, required this.isFromSearch});
+
+  void _showImageSourceActionSheet(BuildContext context, MotoProvider provider, SettingsProvider settings, Motorcycle currentMoto) {
+    showModalBottomSheet(
+      context: context,
+      builder: (BuildContext context) {
+        return SafeArea(
+          child: Wrap(
+            children: <Widget>[
+              ListTile(
+                leading: const Icon(Icons.photo_library),
+                title: Text(settings.translate('gallery')),
+                onTap: () {
+                  Navigator.of(context).pop();
+                  provider.attachPhoto(currentMoto, ImageSource.gallery);
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.photo_camera),
+                title: Text(settings.translate('camera')),
+                onTap: () {
+                  Navigator.of(context).pop();
+                  provider.attachPhoto(currentMoto, ImageSource.camera);
+                },
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -27,7 +59,13 @@ class DetailScreen extends StatelessWidget {
       appBar: AppBar(
         title: Text('${currentMoto.make} ${currentMoto.model}'),
         actions: [
-          if (!isFromSearch)
+          if (!isFromSearch) ...[
+            IconButton(
+              icon: const Icon(Icons.share),
+              onPressed: () {
+                Share.share('${settings.translate('shareText')} ${currentMoto.make} ${currentMoto.model}');
+              },
+            ),
             IconButton(
               icon: const Icon(Icons.delete),
               onPressed: () {
@@ -54,7 +92,7 @@ class DetailScreen extends StatelessWidget {
                 );
               },
             )
-          else
+          ] else
             IconButton(
               icon: const Icon(Icons.add_box),
               onPressed: () {
@@ -114,7 +152,7 @@ class DetailScreen extends StatelessWidget {
                     child: ElevatedButton.icon(
                       icon: const Icon(Icons.camera_alt),
                       label: Text(settings.translate('attachPhoto')),
-                      onPressed: () => provider.attachPhoto(currentMoto),
+                      onPressed: () => _showImageSourceActionSheet(context, provider, settings, currentMoto),
                     ),
                   ),
                   const SizedBox(height: 10),

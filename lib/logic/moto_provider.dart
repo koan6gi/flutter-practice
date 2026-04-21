@@ -6,6 +6,10 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:fuzzy/fuzzy.dart';
+import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:timezone/data/latest_all.dart' as tz;
+import 'package:timezone/timezone.dart' as tz;
 import '../data/models/motorcycle.dart';
 
 class MotoProvider with ChangeNotifier {
@@ -13,11 +17,91 @@ class MotoProvider with ChangeNotifier {
   List<Motorcycle> _searchResults = [];
   bool _isLoading = false;
 
+  String _searchQuery = '';
+  String _selectedType = 'All';
+  bool _sortAscending = false;
+
   final FirebaseFirestore _db = FirebaseFirestore.instance;
+  final FlutterLocalNotificationsPlugin _notificationsPlugin = FlutterLocalNotificationsPlugin();
+
+  MotoProvider() {
+    _initNotifications();
+  }
+
+  Future<void> _initNotifications() async {
+    tz.initializeTimeZones(); 
+
+    const AndroidInitializationSettings initSettingsAndroid = AndroidInitializationSettings('@mipmap/ic_launcher');
+    const InitializationSettings initSettings = InitializationSettings(android: initSettingsAndroid);
+    
+    await _notificationsPlugin.initialize(
+      settings: initSettings,
+    );
+
+    _notificationsPlugin.resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>()?.requestNotificationsPermission();
+  }
 
   List<Motorcycle> get collection => _collection;
   List<Motorcycle> get searchResults => _searchResults;
   bool get isLoading => _isLoading;
+  String get selectedType => _selectedType;
+  bool get sortAscending => _sortAscending;
+
+  List<String> get availableTypes {
+    final types = _collection.map((m) => m.type).toSet().toList();
+    types.insert(0, 'All');
+    return types;
+  }
+
+  List<Motorcycle> get filteredCollection {
+    List<Motorcycle> result = List.from(_collection);
+
+    if (_selectedType != 'All') {
+      result = result.where((m) => m.type == _selectedType).toList();
+    }
+
+    if (_searchQuery.trim().isNotEmpty) {
+      final indexedList = result.asMap().entries.map((e) => '${e.key}:::${e.value.make} ${e.value.model}').toList();
+      
+      final fuzzy = Fuzzy(
+        indexedList,
+        options: FuzzyOptions(threshold: 0.4),
+      );
+      
+      final fuzzyResults = fuzzy.search(_searchQuery.trim());
+      
+      result = fuzzyResults.map((r) {
+        final indexStr = r.item.toString().split(':::')[0];
+        final index = int.parse(indexStr);
+        return result[index];
+      }).toList();
+    }
+
+    result.sort((a, b) {
+      if (_sortAscending) {
+        return a.year.compareTo(b.year);
+      } else {
+        return b.year.compareTo(a.year);
+      }
+    });
+
+    return result;
+  }
+
+  void setGarageSearchQuery(String query) {
+    _searchQuery = query;
+    notifyListeners();
+  }
+
+  void setFilterType(String type) {
+    _selectedType = type;
+    notifyListeners();
+  }
+
+  void toggleSort() {
+    _sortAscending = !_sortAscending;
+    notifyListeners();
+  }
 
   Future<void> loadCollection() async {
     try {
@@ -27,7 +111,7 @@ class MotoProvider with ChangeNotifier {
       }).toList();
       notifyListeners();
     } catch (e) {
-      print('Error Firebase load: $e');
+      debugPrint('Error Firebase load: $e');
     }
   }
 
@@ -72,7 +156,7 @@ class MotoProvider with ChangeNotifier {
           statusKey = 'apiError';
         }
       } catch (e) {
-        print('Error network: $e');
+        debugPrint('Error network: $e');
         statusKey = 'networkError';
         final cachedData = prefs.getString('search_cache');
         if (cachedData != null) {
@@ -119,12 +203,12 @@ class MotoProvider with ChangeNotifier {
       );
 
       if (response.statusCode == 204) {
-        print('Success: File deleted from ImageKit');
+        debugPrint('Success: File deleted from ImageKit');
       } else {
-        print('Error ImageKit delete: ${response.statusCode} - ${response.body}');
+        debugPrint('Error ImageKit delete: ${response.statusCode} - ${response.body}');
       }
     } catch (e) {
-      print('Error ImageKit delete exception: $e');
+      debugPrint('Error ImageKit delete exception: $e');
     }
   }
 
@@ -138,10 +222,6 @@ class MotoProvider with ChangeNotifier {
     notifyListeners();
 
     try {
-      if (moto.imageFileId != null) {
-        await _deletePhotoFromImageKit(moto.imageFileId!);
-      }
-
       final privateKey = dotenv.env['IMAGEKIT_PRIVATE_KEY'] ?? '';
       final bytes = utf8.encode('$privateKey:'); 
       final base64Auth = base64.encode(bytes);
@@ -157,22 +237,49 @@ class MotoProvider with ChangeNotifier {
         var responseData = await response.stream.bytesToString();
         var jsonResponse = json.decode(responseData);
         
-        String uploadedUrl = jsonResponse['url'];
-        String fileId = jsonResponse['fileId']; 
+        String newUploadedUrl = jsonResponse['url'];
+        String newFileId = jsonResponse['fileId']; 
+
+        final doc = await _db.collection('garage').doc(moto.id).get();
+        final oldFileId = doc.data()?['imageFileId'];
 
         await _db.collection('garage').doc(moto.id).update({
-          'imageUrl': uploadedUrl,
-          'imageFileId': fileId,
+          'imageUrl': newUploadedUrl,
+          'imageFileId': newFileId,
         });
+
+        if (oldFileId != null) {
+          await _deletePhotoFromImageKit(oldFileId);
+        }
+
         await loadCollection(); 
       } else {
-        print('Error ImageKit upload: ${response.statusCode}');
+        debugPrint('Error ImageKit upload: ${response.statusCode}');
       }
     } catch (e) {
-      print('Error attachPhoto: $e');
+      debugPrint('Error attachPhoto: $e');
     }
 
     _isLoading = false;
     notifyListeners();
+  }
+
+  Future<void> scheduleReminder(String title, String body) async {
+    const AndroidNotificationDetails androidDetails = AndroidNotificationDetails(
+      'moto_maintenance_channel', 
+      'Maintenance Reminders',
+      importance: Importance.max,
+      priority: Priority.high,
+    );
+    const NotificationDetails notificationDetails = NotificationDetails(android: androidDetails);
+
+    await _notificationsPlugin.zonedSchedule(
+      id: 0,
+      title: title,
+      body: body,
+      scheduledDate: tz.TZDateTime.now(tz.local).add(const Duration(seconds: 10)),
+      notificationDetails: notificationDetails,
+      androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
+    );
   }
 }

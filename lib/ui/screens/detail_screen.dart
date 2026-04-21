@@ -108,7 +108,7 @@ class DetailScreen extends StatelessWidget {
                 Text('${settings.translate('weight')}: ${currentMoto.weight}', style: const TextStyle(fontSize: 16)),
                 const SizedBox(height: 20),
                 
-                if (!isFromSearch)
+                if (!isFromSearch) ...[
                   SizedBox(
                     width: double.infinity,
                     child: ElevatedButton.icon(
@@ -117,6 +117,27 @@ class DetailScreen extends StatelessWidget {
                       onPressed: () => provider.attachPhoto(currentMoto),
                     ),
                   ),
+                  const SizedBox(height: 10),
+                  SizedBox(
+                    width: double.infinity,
+                    child: OutlinedButton.icon(
+                      icon: const Icon(Icons.notifications_active),
+                      label: Text(settings.translate('remindMaint')),
+                      onPressed: () {
+                        provider.scheduleReminder(
+                          settings.translate('notifyTitle'),
+                          settings.translate('remindMaint')
+                        );
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text(settings.translate('notifyScheduled')),
+                            duration: const Duration(seconds: 2),
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                ]
               ],
             ),
           ),

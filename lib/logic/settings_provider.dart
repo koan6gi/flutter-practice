@@ -57,6 +57,7 @@ class SettingsProvider with ChangeNotifier {
         'apiError': 'API Error',
         'searchTitle': 'Search Motorcycles',
         'addedSuccess': 'Added to Garage',
+        'attachPhoto': 'Attach Photo',
       },
       'ru': {
         'title': 'Мой Гараж',
@@ -80,6 +81,7 @@ class SettingsProvider with ChangeNotifier {
         'apiError': 'Ошибка API',
         'searchTitle': 'Поиск мотоциклов',
         'addedSuccess': 'Добавлено в Гараж',
+        'attachPhoto': 'Прикрепить фото',
       },
     };
     return localizedValues[_languageCode]?[key] ?? key;

@@ -1,5 +1,5 @@
 class Motorcycle {
-  final int? id;
+  final String? id; 
   final String make;
   final String model;
   final int year;  
@@ -8,6 +8,8 @@ class Motorcycle {
   final String power;
   final String transmission;
   final String weight;
+  final String? imageUrl; 
+  final String? imageFileId;
 
   Motorcycle({
     this.id,
@@ -19,11 +21,12 @@ class Motorcycle {
     required this.power,
     required this.transmission,
     required this.weight,
+    this.imageUrl,
+    this.imageFileId,
   });
 
   Map<String, dynamic> toMap() {
     return {
-      'id': id,
       'make': make,
       'model': model,
       'year': year,
@@ -32,17 +35,19 @@ class Motorcycle {
       'power': power,
       'transmission': transmission,
       'weight': weight,
+      'imageUrl': imageUrl,
+      'imageFileId': imageFileId,
     };
   }
 
-  factory Motorcycle.fromMap(Map<String, dynamic> map) {
+  factory Motorcycle.fromMap(Map<String, dynamic> map, {String? docId}) {
     int parsedYear = 0;
     if (map['year'] != null) {
       parsedYear = int.tryParse(map['year'].toString()) ?? 0;
     }
 
     return Motorcycle(
-      id: map['id'],
+      id: docId ?? map['id']?.toString(),
       make: map['make'] ?? map['brand'] ?? 'Unknown',
       model: map['model'] ?? 'Unknown',
       year: parsedYear,
@@ -51,6 +56,8 @@ class Motorcycle {
       power: map['power'] ?? 'N/A',
       transmission: map['transmission'] ?? 'N/A',
       weight: map['total_weight'] ?? map['weight'] ?? 'N/A',
+      imageUrl: map['imageUrl'],
+      imageFileId: map['imageFileId'],
     );
   }
 }

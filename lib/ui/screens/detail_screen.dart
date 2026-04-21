@@ -13,10 +13,19 @@ class DetailScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final settings = Provider.of<SettingsProvider>(context);
+    final provider = Provider.of<MotoProvider>(context);
+
+    Motorcycle currentMoto = moto;
+    if (!isFromSearch) {
+      currentMoto = provider.collection.firstWhere(
+        (m) => m.id == moto.id, 
+        orElse: () => moto
+      );
+    }
 
     return Scaffold(
       appBar: AppBar(
-        title: Text('${moto.make} ${moto.model}'),
+        title: Text('${currentMoto.make} ${currentMoto.model}'),
         actions: [
           if (!isFromSearch)
             IconButton(
@@ -34,7 +43,7 @@ class DetailScreen extends StatelessWidget {
                       ),
                       TextButton(
                         onPressed: () {
-                          Provider.of<MotoProvider>(context, listen: false).removeFromCollection(moto.id!);
+                          provider.removeFromCollection(currentMoto);
                           Navigator.of(ctx).pop(); 
                           Navigator.of(context).pop(); 
                         },
@@ -49,7 +58,7 @@ class DetailScreen extends StatelessWidget {
             IconButton(
               icon: const Icon(Icons.add_box),
               onPressed: () {
-                Provider.of<MotoProvider>(context, listen: false).addToCollection(moto);
+                provider.addToCollection(currentMoto);
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(
                     content: Text(settings.translate('addedSuccess')), 
@@ -61,37 +70,56 @@ class DetailScreen extends StatelessWidget {
             ),
         ],
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Center(
-              child: Icon(
-                Icons.motorcycle, 
-                size: 150, 
-                color: Colors.grey[400]
-              )
+      body: provider.isLoading 
+        ? const Center(child: CircularProgressIndicator()) 
+        : SingleChildScrollView(
+            padding: const EdgeInsets.all(16.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Center(
+                  child: currentMoto.imageUrl != null
+                    ? Image.network(
+                        currentMoto.imageUrl!,
+                        height: 200,
+                        fit: BoxFit.cover,
+                      )
+                    : Icon(
+                        Icons.motorcycle, 
+                        size: 150, 
+                        color: Colors.grey[400]
+                      ),
+                ),
+                const SizedBox(height: 20),
+                Text('${settings.translate('make')}: ${currentMoto.make}', style: const TextStyle(fontSize: 18)),
+                const SizedBox(height: 10),
+                Text('${settings.translate('model')}: ${currentMoto.model}', style: const TextStyle(fontSize: 18)),
+                const SizedBox(height: 10),
+                Text('${settings.translate('year')}: ${currentMoto.year}', style: const TextStyle(fontSize: 18)),
+                const Divider(),
+                Text('${settings.translate('type')}: ${currentMoto.type}', style: const TextStyle(fontSize: 16)),
+                const SizedBox(height: 10),
+                Text('${settings.translate('engine')}: ${currentMoto.engine}', style: const TextStyle(fontSize: 16)),
+                const SizedBox(height: 10),
+                Text('${settings.translate('power')}: ${currentMoto.power}', style: const TextStyle(fontSize: 16)),
+                const SizedBox(height: 10),
+                Text('${settings.translate('transmission')}: ${currentMoto.transmission}', style: const TextStyle(fontSize: 16)),
+                const SizedBox(height: 10),
+                Text('${settings.translate('weight')}: ${currentMoto.weight}', style: const TextStyle(fontSize: 16)),
+                const SizedBox(height: 20),
+                
+                if (!isFromSearch)
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton.icon(
+                      icon: const Icon(Icons.camera_alt),
+                      label: Text(settings.translate('attachPhoto')),
+                      onPressed: () => provider.attachPhoto(currentMoto),
+                    ),
+                  ),
+              ],
             ),
-            const SizedBox(height: 20),
-            Text('${settings.translate('make')}: ${moto.make}', style: const TextStyle(fontSize: 18)),
-            const SizedBox(height: 10),
-            Text('${settings.translate('model')}: ${moto.model}', style: const TextStyle(fontSize: 18)),
-            const SizedBox(height: 10),
-            Text('${settings.translate('year')}: ${moto.year}', style: const TextStyle(fontSize: 18)),
-            const Divider(),
-            Text('${settings.translate('type')}: ${moto.type}', style: const TextStyle(fontSize: 16)),
-            const SizedBox(height: 10),
-            Text('${settings.translate('engine')}: ${moto.engine}', style: const TextStyle(fontSize: 16)),
-            const SizedBox(height: 10),
-            Text('${settings.translate('power')}: ${moto.power}', style: const TextStyle(fontSize: 16)),
-            const SizedBox(height: 10),
-            Text('${settings.translate('transmission')}: ${moto.transmission}', style: const TextStyle(fontSize: 16)),
-            const SizedBox(height: 10),
-            Text('${settings.translate('weight')}: ${moto.weight}', style: const TextStyle(fontSize: 16)),
-          ],
-        ),
-      ),
+          ),
     );
   }
 }
